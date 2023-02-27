@@ -1,5 +1,6 @@
 package tobyspring.helloboot;
 
+import org.springframework.boot.SpringApplication;
 import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
 import org.springframework.boot.web.server.WebServer;
 import org.springframework.boot.web.servlet.ServletContextInitializer;
@@ -30,7 +31,11 @@ public class HellobootApplication {
 
 	@Bean
 	public ServletWebServerFactory servletWebServerFactory() {
-		return new TomcatServletWebServerFactory();
+		TomcatServletWebServerFactory tomcatServletWebServerFactory = new TomcatServletWebServerFactory();
+		tomcatServletWebServerFactory.addConnectorCustomizers(connector -> {
+			connector.setPort(9090);
+		});
+		return tomcatServletWebServerFactory;
 	}
 
 	@Bean
@@ -39,29 +44,10 @@ public class HellobootApplication {
 	}
 
 	public static void main(String[] args) {
-		System.out.println("Hello Containerless Standalong Application");
+		System.out.println("Hello Containerless Standalone Application");
 
-		AnnotationConfigWebApplicationContext applicationContext = new AnnotationConfigWebApplicationContext() {
-			@Override
-			protected void onRefresh() {
-				super.onRefresh();
-
-				TomcatServletWebServerFactory serverFactory = (TomcatServletWebServerFactory) this.getBean(ServletWebServerFactory.class);
-				DispatcherServlet dispatcherServlet = this.getBean(DispatcherServlet.class);
-				dispatcherServlet.setApplicationContext(this);
-
-				serverFactory.addConnectorCustomizers(connector -> {
-					connector.setPort(9090);
-				});
-
-				WebServer webServer = serverFactory.getWebServer(servletContext -> {
-					servletContext.addServlet("dispatcherServlet", dispatcherServlet).addMapping("/*");
-				});
-				webServer.start(); // Tomcat Servlet Container가 동작한다.
-			}
-		};
-		applicationContext.register(HellobootApplication.class);
-		applicationContext.refresh();
+		SpringApplication.run(HellobootApplication.class, args);
 	}
+
 
 }
