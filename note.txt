@@ -4,3 +4,8 @@
 컨테이너? 
 - 스프링은 IoC container이다(스프링 컨테이너라고도 한다. 스프링 프레임워크를...)
 - 
+
+Web Component
+
+
+Controller라는 것은 Spring Container안에서 마치 웹 컨테이너 안에 있는 웹 컴포넌트처럼 웹의 요청을 받아서 그 결과를 return해 주는 것.

@@ -3,10 +3,18 @@ package tobyspring.helloboot;
 import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
 import org.springframework.boot.web.server.WebServer;
 import org.springframework.boot.web.servlet.ServletContextInitializer;
+import org.springframework.boot.web.servlet.server.ServletWebServerFactory;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
+import org.springframework.web.context.support.GenericWebApplicationContext;
+import org.springframework.web.servlet.DispatcherServlet;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
@@ -16,44 +24,44 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 
+@Configuration
+@ComponentScan
 public class HellobootApplication {
+
+	@Bean
+	public ServletWebServerFactory servletWebServerFactory() {
+		return new TomcatServletWebServerFactory();
+	}
+
+	@Bean
+	public DispatcherServlet dispatcherServlet() {
+		return new DispatcherServlet();
+	}
 
 	public static void main(String[] args) {
 		System.out.println("Hello Containerless Standalong Application");
 
-//		new Tomcat().start();
-		TomcatServletWebServerFactory serverFactory = new TomcatServletWebServerFactory();
-		serverFactory.addConnectorCustomizers(connector -> {
-			connector.setPort(9090);
-		});
-		WebServer webServer = serverFactory.getWebServer(new ServletContextInitializer() {
-			HelloController helloController = new HelloController();
-
+		AnnotationConfigWebApplicationContext applicationContext = new AnnotationConfigWebApplicationContext() {
 			@Override
-			public void onStartup(ServletContext servletContext) throws ServletException {
-				servletContext.addServlet("frontcontroller", new HttpServlet() {
-					@Override
-					protected void service(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+			protected void onRefresh() {
+				super.onRefresh();
 
-						if (req.getRequestURI().equals("/hello") && req.getMethod().equals(HttpMethod.GET.name())) {
-							String name = req.getParameter("name");
+				TomcatServletWebServerFactory serverFactory = (TomcatServletWebServerFactory) this.getBean(ServletWebServerFactory.class);
+				DispatcherServlet dispatcherServlet = this.getBean(DispatcherServlet.class);
+				dispatcherServlet.setApplicationContext(this);
 
-							String ret = helloController.hello(name);
+				serverFactory.addConnectorCustomizers(connector -> {
+					connector.setPort(9090);
+				});
 
-							resp.setStatus(HttpStatus.OK.value());
-							resp.setHeader(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN_VALUE);
-							PrintWriter writer = resp.getWriter();
-							writer.println(ret);
-						} else if (req.getRequestURI().equals("/user")) {
-
-						} else {
-							resp.setStatus(HttpStatus.NOT_FOUND.value());
-						}
-					}
-				}).addMapping("/*");
+				WebServer webServer = serverFactory.getWebServer(servletContext -> {
+					servletContext.addServlet("dispatcherServlet", dispatcherServlet).addMapping("/*");
+				});
+				webServer.start(); // Tomcat Servlet Container가 동작한다.
 			}
-		});
-		webServer.start(); // Tomcat Servlet Container가 동작한다.
+		};
+		applicationContext.register(HellobootApplication.class);
+		applicationContext.refresh();
 	}
 
 }
